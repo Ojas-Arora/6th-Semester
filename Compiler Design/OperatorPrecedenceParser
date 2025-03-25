@@ -1,0 +1,55 @@
+# Operator Precedence Table for given grammar
+precedence_table = {
+    '+': {'+': '>', '*': '<', 'id': '<', '$': '>'},
+    '*': {'+': '>', '*': '>', 'id': '<', '$': '>'},
+    'id': {'+': '>', '*': '>', '$': '>'},  # id should not shift another id
+    '$': {'+': '<', '*': '<', 'id': '<', '$': ''}  # End marker
+}
+
+# Function to get precedence relation
+def get_precedence(top, incoming):
+    return precedence_table.get(top, {}).get(incoming, '')
+
+# Function to check if a symbol is terminal
+def is_terminal(symbol):
+    return symbol in precedence_table
+
+# Function to perform reduction
+def reduce(stack):
+    if stack[-1] == 'id':  # Reduce id → E
+        stack[-1] = 'E'
+    elif len(stack) >= 3 and stack[-3] == 'E' and stack[-1] == 'E' and stack[-2] in ('+', '*'):
+        stack[-3:] = ['E']  # Reduce E + E or E * E → E
+
+# Operator precedence parsing function
+def parse(expression):
+    stack = ['$']  # Initialize stack with end marker
+    input_buffer = expression.split() + ['$']  # Split input based on spaces and add '$' marker
+
+    print("\nParsing Steps:")
+    print(f"{'Stack':<20}{'Input':<20}{'Action'}")
+
+    while True:
+        top = next((s for s in reversed(stack) if is_terminal(s)), '$')
+        current = input_buffer[0]
+        precedence = get_precedence(top, current)
+
+        print(f"{' '.join(stack):<20}{' '.join(input_buffer):<20}", end='')
+
+        if precedence in ('<', '='):  # Shift
+            print(f"Shift {current}")
+            stack.append(input_buffer.pop(0))
+        elif precedence == '>':  # Reduce
+            print("Reduce")
+            reduce(stack)
+        elif stack == ['$', 'E'] and input_buffer == ['$']:  # Accept
+            print("Accepted!")
+            break
+        else:
+            print("Error! Invalid input.")
+            break
+
+# Driver Code
+if __name__ == "__main__":
+    expr = input("Enter an expression (use spaces between tokens, e.g., id + id * id): ")
+    parse(expr)

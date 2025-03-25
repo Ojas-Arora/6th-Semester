@@ -1,0 +1,56 @@
+import re
+
+class RecursiveDescentParser:
+    def __init__(self, expression):
+        self.tokens = re.findall(r'\d+|[()+\-*/]', expression)
+        self.pos = 0
+
+    def parse(self):
+        return self.expr()
+
+    def match(self, expected):
+        if self.pos < len(self.tokens) and self.tokens[self.pos] == expected:
+            self.pos += 1
+            return True
+        return False
+
+    def factor(self):
+        if self.match('('):
+            result = self.expr()
+            if not self.match(')'):
+                raise SyntaxError("Missing closing parenthesis")
+            return result
+
+        elif self.pos < len(self.tokens) and self.tokens[self.pos].isdigit():
+            value = int(self.tokens[self.pos])
+            self.pos += 1
+            return value
+        else:
+            raise SyntaxError("Unexpected token: " + self.tokens[self.pos])
+
+    def term(self):
+        result = self.factor()
+        while self.pos < len(self.tokens) and self.tokens[self.pos] in ('*', '/'):
+            op = self.tokens[self.pos]
+            self.pos += 1
+            if op == '*':
+                result *= self.factor()
+            elif op == '/':
+                result /= self.factor()
+        return result
+
+    def expr(self):
+        result = self.term()
+        while self.pos < len(self.tokens) and self.tokens[self.pos] in ('+', '-'):
+            op = self.tokens[self.pos]
+            self.pos += 1
+            if op == '+':
+                result += self.term()
+            elif op == '-':
+                result -= self.term()
+        return result
+
+expression = input("Enter an arithmetic expression: ")
+parser = RecursiveDescentParser(expression)
+result = parser.parse()
+print(f"Result: {result}")

@@ -1,0 +1,112 @@
+from collections import defaultdict
+from tabulate import tabulate  
+
+# Define Grammar
+grammar = {
+    'S': [['a', 'A']],
+    'A': [['b', 'A'], ['ε']]
+}
+
+# Sets for First and Follow
+first_sets = defaultdict(set)
+follow_sets = defaultdict(set)
+
+# Function to compute FIRST set
+def compute_first(symbol):
+    if symbol in first_sets:
+        return first_sets[symbol]
+
+    first = set()
+    
+    if not symbol.isupper():  # Terminal
+        first.add(symbol)
+        return first
+    
+    for production in grammar[symbol]:
+        for sub_symbol in production:
+            sub_first = compute_first(sub_symbol)
+            first.update(sub_first - {'ε'})
+            
+            if 'ε' not in sub_first:
+                break
+        else:
+            first.add('ε')
+    
+    first_sets[symbol] = first
+    return first
+
+# Compute FIRST sets
+for non_terminal in grammar:
+    compute_first(non_terminal)
+
+# Function to compute FOLLOW set iteratively
+def compute_follow():
+    start_symbol = list(grammar.keys())[0]
+    follow_sets[start_symbol].add('$')  # EOF symbol
+    
+    changed = True
+    while changed:
+        changed = False
+        for lhs, productions in grammar.items():
+            for production in productions:
+                follow_temp = follow_sets[lhs].copy()
+                
+                for i in reversed(range(len(production))):
+                    symbol = production[i]
+                    
+                    if symbol.isupper():
+                        before_update = len(follow_sets[symbol])
+                        follow_sets[symbol].update(follow_temp)
+                        
+                        if 'ε' in compute_first(symbol):
+                            follow_temp.update(compute_first(symbol) - {'ε'})
+                        else:
+                            follow_temp = compute_first(symbol)
+                        
+                        if len(follow_sets[symbol]) > before_update:
+                            changed = True
+
+# Compute FOLLOW sets
+compute_follow()
+
+# Construct LL(1) Parsing Table
+parsing_table = defaultdict(dict)
+
+for lhs, productions in grammar.items():
+    for production in productions:
+        first_of_production = set()
+        
+        for symbol in production:
+            first_of_production.update(compute_first(symbol) - {'ε'})
+            if 'ε' not in compute_first(symbol):
+                break
+        else:
+            first_of_production.update(follow_sets[lhs])
+        
+        for terminal in first_of_production:
+            parsing_table[lhs][terminal] = " ".join(production)
+
+# Extract all terminals correctly
+terminals = sorted(set(symbol for productions in grammar.values() for production in productions for symbol in production) - {'ε'})  
+terminals.append('$')  # Add end-of-input symbol manually
+
+# Print FIRST Sets
+print("\nFIRST Sets:")
+for non_terminal, first_set in first_sets.items():
+    print(f"FIRST({non_terminal}): {first_set}")
+
+# Print FOLLOW Sets
+print("\nFOLLOW Sets:")
+for non_terminal, follow_set in follow_sets.items():
+    print(f"FOLLOW({non_terminal}): {follow_set}")
+
+# Print LL(1) Parsing Table in Tabular Format
+print("\nLL(1) Parsing Table:")
+table_data = []
+headers = [''] + list(terminals)
+
+for non_terminal in grammar:
+    row = [non_terminal] + [parsing_table[non_terminal].get(term, '') for term in terminals]
+    table_data.append(row)
+
+print(tabulate(table_data, headers=headers, tablefmt="grid"))
